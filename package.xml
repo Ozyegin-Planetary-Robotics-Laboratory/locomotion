@@ -51,8 +51,18 @@
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
   <depend>roscpp</depend>
-  <depend>std_msgs</depend>
   <depend>rospy</depend>
+  <depend>actionlib</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2</depend>
+  <depend>ozurover_messages</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>nav_msgs</depend>
+  <depend>dynamic_reconfigure</depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
