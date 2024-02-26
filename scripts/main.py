@@ -79,9 +79,20 @@ def msg_callback(data):
 
 def calculate_velocity_targets(rotation, speed):
     # Rover width: 64cm, wheel diameter: 30cm, distance between two wheels at the same side: 96cm
-    velocity_diff = math.tan(rotation * 0.95) * speed
-    velocity_left_group = (speed + (velocity_diff / 2))
-    velocity_right_group = velocity_diff - velocity_left_group
+    if rotation == 0:
+        return [speed, speed]
+    rot_radius = speed / rotation
+    rover_width = 0.64
+    inner_radius = rot_radius - (rover_width / 2)
+    outer_radius = rot_radius + (rover_width / 2)
+    inner_velocity = inner_radius * rotation
+    outer_velocity = outer_radius * rotation
+
+    # velocity_diff = math.tan(rotation * 0.95) * speed
+    # velocity_left_group = (speed + (velocity_diff / 2))
+    # velocity_right_group = velocity_diff - velocity_left_group
+    velocity_left_group = outer_velocity
+    velocity_right_group = inner_velocity
     return [velocity_right_group, velocity_left_group]
 
 
