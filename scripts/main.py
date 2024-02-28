@@ -10,6 +10,7 @@ from TMotorCANControl.servo_can import TMotorManager_servo_can
 import rospy
 from multiprocessing import Process
 from sensor_msgs.msg import Joy
+from ozurover_messages.msg import Steer
 
 telemetry_server = "localhost:8080"
 telemetry_uri = "/rover-data"
@@ -70,8 +71,8 @@ def msg_callback(data):
     ctrl_flag = 1
     global state
     global state_timeout_millis
-    rotation = data.axes[1]
-    speed = data.axes[0]
+    rotation = data.angle
+    speed = data.speed
     valid_until = current_millis + state_timeout_millis
     emit(MotorControlState(rotation, speed, valid_until))
     print(rotation, speed, valid_until)
@@ -181,7 +182,8 @@ try:
                     if telemetry_enabled:
                         scheduleTelemetryTaskProcess(motor_collection)
                     rospy.Subscriber("/joy", Joy, joy_callback)
-                    rospy.Subscriber("/ares/joy", , msg_callback)
+                    rospy.Subscriber("/ares/joy", Joy, joy_callback)
+                    rospy.Subscriber("/ares/cmd_vel", Steer, msg_callback)
                     for motor in motor_collection:
                         motor.enter_velocity_control()
                     while rospy.is_shutdown() is False:
