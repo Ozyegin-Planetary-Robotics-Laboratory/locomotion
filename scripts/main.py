@@ -68,9 +68,15 @@ if __name__ == '__main__':
                     motor4.enter_velocity_control()
                     
                     time.sleep(2.0)
-                    
-                    motor1.velocity = 0.2
-                    a = 'b'
+                    def motorGoBr():
+                      while True:
+                        motor1.velocity = 0.0
+                        motor2.velocity = 0.0
+                        motor3.velocity = 1.0
+                        motor4.velocity = 1.0
+                        time.sleep(0.1)
+                        
+                    threading.Thread(target=motorGoBr).start()
                     
                     while a is not 'q':
                         a = input("Enter 'q' to quit: ")
