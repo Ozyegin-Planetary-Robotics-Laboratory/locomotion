@@ -20,17 +20,17 @@ class MotorController:
   def getTime():
     return time.time() - start_time
 
-  #def writeMotorStates(self):
-  #  motor_data = [self.getTime(),
-  #                motor1.get_motor_velocity_radians_per_second(),
-  #                motor1.get_current_qaxis_amps(),
-  #                motor2.get_motor_velocity_radians_per_second(),
-  #                motor2.get_current_qaxis_amps(),
-  #                motor3.get_motor_velocity_radians_per_second(),
-  #                motor3.get_current_qaxis_amps(),
-  #                motor4.get_motor_velocity_radians_per_second(),
-  #                motor4.get_current_qaxis_amps()]
-  #  writer.writerow(motor_data)
+  def writeMotorStates(self):
+    motor_data = [self.getTime(),
+                  motor1.get_motor_velocity_radians_per_second(),
+                  motor1.get_current_qaxis_amps(),
+                  motor2.get_motor_velocity_radians_per_second(),
+                  motor2.get_current_qaxis_amps(),
+                  motor3.get_motor_velocity_radians_per_second(),
+                  motor3.get_current_qaxis_amps(),
+                  motor4.get_motor_velocity_radians_per_second(),
+                  motor4.get_current_qaxis_amps()]
+    writer.writerow(motor_data)
   
   def joy_callback(self, joystick_data):
     print(joystick_data.axes[1], joystick_data.axes[4])
@@ -48,6 +48,17 @@ if __name__ == '__main__':
         with TMotorManager_servo_can(motor_type='AK70-10', motor_ID=2) as motor2:
             with TMotorManager_servo_can(motor_type='AK70-10', motor_ID=3) as motor3:
                 with TMotorManager_servo_can(motor_type='AK70-10', motor_ID=4) as motor4:
+                    
+                    def joy_callback(joystick_data):
+                        print(joystick_data.axes[1], joystick_data.axes[4])
+                        l_joy_val, r_joy_val = float(joystick_data.axes[1]), float(joystick_data.axes[4])
+                        angular_vel_range, joy_range = 13.6, 2.0
+                        speed_coefficient = 0.5 #Coefficient to tame the speed output. 
+                        motor1.velocity = (-r_joy_val * angular_vel_range/joy_range) * speed_coefficient
+                        motor2.velocity = (l_joy_val * angular_vel_range/joy_range) * speed_coefficient
+                        motor3.velocity = (-r_joy_val * angular_vel_range/joy_range) * speed_coefficient
+                        motor4.velocity = (l_joy_val * angular_vel_range/joy_range) * speed_coefficient
+                        
                     #with open('data.csv', 'w', newline='') as data_f:
                       #headers = ['time', 'motor1_v', 'motor1_c', 'motor2_v', 'motor2_c', 'motor3_v', 'motor3_c', 'motor4_v', 'motor4_c']
                       #writer = csv.writer(data_f)
@@ -56,6 +67,8 @@ if __name__ == '__main__':
                     motor2.enter_velocity_control()
                     motor3.enter_velocity_control()
                     motor4.enter_velocity_control()
-                    motor_interface = MotorController()
+                    #motor_interface = MotorController()
+                    rospy.init_node("ozurover_motor_interface", anonymous=True)
+                    subscriber = rospy.Subscriber("/joy", Joy, joy_callback)
                     rospy.spin()
                       #data_f.close()
