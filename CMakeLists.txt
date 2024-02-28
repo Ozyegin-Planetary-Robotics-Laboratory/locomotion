@@ -159,6 +159,10 @@ add_executable(tf_pub src/rovertfpub.cpp)
 target_link_libraries(tf_pub ${catkin_LIBRARIES})
 add_dependencies(tf_pub ${catkin_EXPORTED_TARGETS})
 
+add_executable(map_pub src/static_pub.cpp)
+target_link_libraries(map_pub ${catkin_LIBRARIES})
+add_dependencies(map_pub ${catkin_EXPORTED_TARGETS})
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use

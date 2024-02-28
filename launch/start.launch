@@ -1,0 +1,7 @@
+<launch>
+    <node pkg="ozurover-locator" type="main_node" name="gps_node" respawn="true"/>
+    <node pkg="ozurover_locomotion" type="main.py" name="cmd_interface_node" respawn="true"/>
+    <node pkg="ozurover_locomotion" type="pathtracer" name="pathtracer_node" respawn="true"/>
+    <node pkg="ozurover_locomotion" type="map_pub" name="costmap_node" respawn="true"/>
+    <node pkg="ozurover_control" type="pathfinding_node" name="pathfinder_node" respawn="true"/>
+</launch>

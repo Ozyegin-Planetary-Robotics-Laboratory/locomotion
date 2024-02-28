@@ -47,7 +47,7 @@ def joy_callback(data):
     global ctrl_flag
     global ctrl_valid_until
     global ctrl_user_timeout_millis
-    print("Joy callback {} {}", data.axes[0], data.axes[1])
+    print("Joy callback {} {}", data.axes[1], data.axes[4])
     current_millis = millis()
     ctrl_flag = 2
     ctrl_valid_until = current_millis + ctrl_user_timeout_millis
@@ -181,6 +181,7 @@ try:
                     if telemetry_enabled:
                         scheduleTelemetryTaskProcess(motor_collection)
                     rospy.Subscriber("/joy", Joy, joy_callback)
+                    rospy.Subscriber("/ares/joy", , msg_callback)
                     for motor in motor_collection:
                         motor.enter_velocity_control()
                     while rospy.is_shutdown() is False:
