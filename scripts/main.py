@@ -1,194 +1,60 @@
 #!/usr/bin/python3
-# Not necessary?
-# from typing import Required
-import sys
-
-import time
-import math
-import requests
-from TMotorCANControl.servo_can import TMotorManager_servo_can
-import rospy
-from multiprocessing import Process
 from sensor_msgs.msg import Joy
-from ozurover_messages.msg import Steer
+from NeuroLocoMiddleware.SoftRealtimeLoop import SoftRealtimeLoop
+from TMotorCANControl.servo_can import TMotorManager_servo_can
+from datetime import datetime, timezone, timedelta
+import threading
+import csv
+import rospy
+import requests
+import time
 
-telemetry_server = "localhost:8080"
-telemetry_uri = "/rover-data"
-telemetry_enabled = False
+start_time = time.time()
 
+class MotorController:
+  def __init__(self):
+    time.sleep(2.0)
+    rospy.init_node("ozurover_motor_interface", anonymous=True)
+    self.subscriber = rospy.Subscriber("/joy", Joy, self.joy_callback)
+    self.loop = SoftRealtimeLoop(100, self.writeMotorStates)
 
-class MotorControlState:
-    def __init__(self, rotation, speed, valid_until):
-        self.rotation = rotation
-        self.speed = speed
-        self.valid_until = valid_until
+  def getTime():
+    return time.time() - start_time
 
+  def writeMotorStates(self):
+    motor_data = [self.getTime(),
+                  motor1.get_motor_velocity_radians_per_second(),
+                  motor1.get_current_qaxis_amps(),
+                  motor2.get_motor_velocity_radians_per_second(),
+                  motor2.get_current_qaxis_amps(),
+                  motor3.get_motor_velocity_radians_per_second(),
+                  motor3.get_current_qaxis_amps(),
+                  motor4.get_motor_velocity_radians_per_second(),
+                  motor4.get_current_qaxis_amps()]
+    writer.writerow(motor_data)
+  
+  def joy_callback(self, joystick_data):
+    l_joy_val, r_joy_val = float(joystick_data.axes[1]), float(joystick_data.axes[3])
+    angular_vel_range, joy_range = 13.6, 2.0
+    speed_coefficient = 0.2 #Coefficient to tame the speed output. 
+    motor1.velocity = (-r_joy_val * angular_vel_range/joy_range) * speed_coefficient
+    motor2.velocity = (l_joy_val * angular_vel_range/joy_range) * speed_coefficient
+    motor3.velocity = (-r_joy_val * angular_vel_range/joy_range) * speed_coefficient
+    motor4.velocity = (l_joy_val * angular_vel_range/joy_range) * speed_coefficient
 
-default_state = MotorControlState(0, 0, -1)
-state = default_state
-
-
-def millis():
-    return round(time.time() * 1000)
-
-
-start_millis = millis()
-
-
-def emit(value):
-    global state
-    state = value
-
-
-def is_message_valid():
-    return millis() > state.valid_until
-
-
-def joy_callback(data):
-    global ctrl_flag
-    global ctrl_valid_until
-    global ctrl_user_timeout_millis
-    print("Joy callback {} {}", data.axes[1], data.axes[4])
-    current_millis = millis()
-    ctrl_flag = 2
-    ctrl_valid_until = current_millis + ctrl_user_timeout_millis
-    global state
-    global state_timeout_millis
-    rotation = data.axes[0]
-    speed = data.axes[1]
-    valid_until = current_millis + state_timeout_millis
-    emit(MotorControlState(math.asin(rotation), speed, valid_until))
-    print(rotation, speed, valid_until)
-
-
-def msg_callback(data):
-    global ctrl_flag
-    global ctrl_valid_until
-    global ctrl_user_timeout_millis
-    current_millis = millis()
-    if ctrl_flag > 1 and ctrl_valid_until >= current_millis:
-        return
-    ctrl_flag = 1
-    global state
-    global state_timeout_millis
-    rotation = data.angle
-    speed = data.speed
-    valid_until = current_millis + state_timeout_millis
-    emit(MotorControlState(rotation, speed, valid_until))
-    print(rotation, speed, valid_until)
-
-
-def calculate_velocity_targets(rotation, speed):
-    # Rover width: 64cm, wheel diameter: 30cm, distance between two wheels at the same side: 96cm
-    if rotation == 0:
-        return [speed, speed]
-    rot_radius = speed / rotation
-    rover_width = 0.64
-    inner_radius = rot_radius - (rover_width / 2)
-    outer_radius = rot_radius + (rover_width / 2)
-    inner_velocity = inner_radius * rotation
-    outer_velocity = outer_radius * rotation
-
-    # velocity_diff = math.tan(rotation * 0.95) * speed
-    # velocity_left_group = (speed + (velocity_diff / 2))
-    # velocity_right_group = velocity_diff - velocity_left_group
-    velocity_left_group = outer_velocity
-    velocity_right_group = inner_velocity
-    return [velocity_right_group, velocity_left_group]
-
-
-def update_motor_collection(motor_collection, state):
-    velocities = calculate_velocity_targets(state.rotation, state.speed)
-    motor_collection[0].velocity = velocities[0]
-    motor_collection[1].velocity = velocities[1]
-    motor_collection[2].velocity = velocities[0]
-    motor_collection[3].velocity = velocities[1]
-    for motor in motor_collection:
-        motor.update()
-
-
-def tick(motor_collection):
-    global state
-    if is_message_valid():
-        update_motor_collection(motor_collection, state)
-    else:
-        update_motor_collection(motor_collection, default_state)
-
-
-def get_motor_state_map(motor):
-    return {"current": motor.get_current_qaxis_amps(), "speed": motor.get_motor_velocity_radians_per_second(),
-            "temperature": float(motor.temperature)}
-
-
-def get_motor_collection_state(motor_collection):
-    state_map = []
-    for i, m in enumerate(motor_collection):
-        state_map += get_motor_state_map(m)
-    return state_map
-
-
-def telemetryTask(motor_collection):
-    global telemetry_uri
-    global telemetry_server
-    global start_millis
-    global ctrl_flag
-    while rospy.is_shutdown() is False:
-        epoch = millis()
-        delta_t = epoch - start_millis
-        motor_data = {
-            "LocoMotorData": get_motor_collection_state(motor_collection),
-            "Mode": "idle",
-            "InitialModeIndex": 0,
-            "Connected": True,
-            "BatteryVoltage": 10.0,
-            "ctrl": {
-                "flag": ctrl_flag
-            },
-            "DirtTemperature": 10.0,
-            "DirtHumidity": 10.0,
-            "timestamp": epoch,
-            "delta_t": delta_t,
-            "consoleLog": [],
-
-        }
-        requests.post(telemetry_server + telemetry_uri, json=motor_data)
-        time.sleep(0.2)
-
-
-def scheduleTelemetryTaskProcess(motor_collection):
-    p = Process(target=telemetryTask, args=[motor_collection])
-    p.start()
-
-
-ctrl_flag = 0  # 0: unoccupied, 1: system, 2: user (joystick)
-ctrl_valid_until = 0
-ctrl_user_timeout_millis = 5000
-
-state_timeout_millis = 100
-
-rover_width = 64 * 0.01
-rover_height = 96 * 0.01
-wheel_diameter = 30 * 0.01
-
-wheel_distance_from_center = math.sqrt(rover_width ** 2 + rover_height ** 2) / 2
-
-try:
-    rospy.init_node("ozurover-locomotion", anonymous=True)
+if __name__ == '__main__':
     with TMotorManager_servo_can(motor_type='AK70-10', motor_ID=1) as motor1:
         with TMotorManager_servo_can(motor_type='AK70-10', motor_ID=2) as motor2:
             with TMotorManager_servo_can(motor_type='AK70-10', motor_ID=3) as motor3:
                 with TMotorManager_servo_can(motor_type='AK70-10', motor_ID=4) as motor4:
-                    motor_collection = [motor1, motor2, motor3, motor4]  # R, L, R, L
-                    if telemetry_enabled:
-                        scheduleTelemetryTaskProcess(motor_collection)
-                    rospy.Subscriber("/joy", Joy, joy_callback)
-                    rospy.Subscriber("/ares/joy", Joy, joy_callback)
-                    rospy.Subscriber("/ares/cmd_vel", Steer, msg_callback)
-                    for motor in motor_collection:
-                        motor.enter_velocity_control()
-                    while rospy.is_shutdown() is False:
-                        tick(motor_collection)
-                        time.sleep(0.02)
-                        
-except KeyboardInterrupt:
-    sys.exit(0)
+                    with open('data.csv', 'w', newline='') as data_f:
+                        headers = ['time', 'motor1_v', 'motor1_c', 'motor2_v', 'motor2_c', 'motor3_v', 'motor3_c', 'motor4_v', 'motor4_c']
+                        writer = csv.writer(data_f)
+                        writer.writerow(headers)
+                        motor1.enter_velocity_control()
+                        motor2.enter_velocity_control()
+                        motor3.enter_velocity_control()
+                        motor4.enter_velocity_control()
+                        motor_interface = MotorController()
+                        rospy.spin()
+                        data_f.close()
