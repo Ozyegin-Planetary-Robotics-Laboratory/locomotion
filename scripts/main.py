@@ -34,27 +34,29 @@ class MotorController:
     writer.writerow(motor_data)
   
   def joy_callback(self, joystick_data):
-    l_joy_val, r_joy_val = float(joystick_data.axes[1]), float(joystick_data.axes[3])
+    print(joystick_data.axes[1], joystick_data.axes[4])
+    l_joy_val, r_joy_val = float(joystick_data.axes[1]), float(joystick_data.axes[4])
     angular_vel_range, joy_range = 13.6, 2.0
-    speed_coefficient = 0.2 #Coefficient to tame the speed output. 
+    speed_coefficient = 0.5 #Coefficient to tame the speed output. 
     motor1.velocity = (-r_joy_val * angular_vel_range/joy_range) * speed_coefficient
     motor2.velocity = (l_joy_val * angular_vel_range/joy_range) * speed_coefficient
     motor3.velocity = (-r_joy_val * angular_vel_range/joy_range) * speed_coefficient
     motor4.velocity = (l_joy_val * angular_vel_range/joy_range) * speed_coefficient
+  
 
 if __name__ == '__main__':
     with TMotorManager_servo_can(motor_type='AK70-10', motor_ID=1) as motor1:
         with TMotorManager_servo_can(motor_type='AK70-10', motor_ID=2) as motor2:
             with TMotorManager_servo_can(motor_type='AK70-10', motor_ID=3) as motor3:
                 with TMotorManager_servo_can(motor_type='AK70-10', motor_ID=4) as motor4:
-                    with open('data.csv', 'w', newline='') as data_f:
-                        headers = ['time', 'motor1_v', 'motor1_c', 'motor2_v', 'motor2_c', 'motor3_v', 'motor3_c', 'motor4_v', 'motor4_c']
-                        writer = csv.writer(data_f)
-                        writer.writerow(headers)
-                        motor1.enter_velocity_control()
-                        motor2.enter_velocity_control()
-                        motor3.enter_velocity_control()
-                        motor4.enter_velocity_control()
-                        motor_interface = MotorController()
-                        rospy.spin()
-                        data_f.close()
+                    #with open('data.csv', 'w', newline='') as data_f:
+                      #headers = ['time', 'motor1_v', 'motor1_c', 'motor2_v', 'motor2_c', 'motor3_v', 'motor3_c', 'motor4_v', 'motor4_c']
+                      #writer = csv.writer(data_f)
+                      #writer.writerow(headers)
+                    motor1.enter_velocity_control()
+                    motor2.enter_velocity_control()
+                    motor3.enter_velocity_control()
+                    motor4.enter_velocity_control()
+                    motor_interface = MotorController()
+                    rospy.spin()
+                      #data_f.close()
