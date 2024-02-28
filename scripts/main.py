@@ -16,22 +16,21 @@ class MotorController:
     time.sleep(2.0)
     rospy.init_node("ozurover_motor_interface", anonymous=True)
     self.subscriber = rospy.Subscriber("/joy", Joy, self.joy_callback)
-    self.loop = SoftRealtimeLoop(100, self.writeMotorStates)
-
+    
   def getTime():
     return time.time() - start_time
 
-  def writeMotorStates(self):
-    motor_data = [self.getTime(),
-                  motor1.get_motor_velocity_radians_per_second(),
-                  motor1.get_current_qaxis_amps(),
-                  motor2.get_motor_velocity_radians_per_second(),
-                  motor2.get_current_qaxis_amps(),
-                  motor3.get_motor_velocity_radians_per_second(),
-                  motor3.get_current_qaxis_amps(),
-                  motor4.get_motor_velocity_radians_per_second(),
-                  motor4.get_current_qaxis_amps()]
-    writer.writerow(motor_data)
+  #def writeMotorStates(self):
+  #  motor_data = [self.getTime(),
+  #                motor1.get_motor_velocity_radians_per_second(),
+  #                motor1.get_current_qaxis_amps(),
+  #                motor2.get_motor_velocity_radians_per_second(),
+  #                motor2.get_current_qaxis_amps(),
+  #                motor3.get_motor_velocity_radians_per_second(),
+  #                motor3.get_current_qaxis_amps(),
+  #                motor4.get_motor_velocity_radians_per_second(),
+  #                motor4.get_current_qaxis_amps()]
+  #  writer.writerow(motor_data)
   
   def joy_callback(self, joystick_data):
     print(joystick_data.axes[1], joystick_data.axes[4])
